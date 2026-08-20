@@ -71,7 +71,6 @@ func DefaultRuntimeConfig() *RuntimeConfig {
 			InputType: make(map[string]string),
 		},
 		Heartbeat: BeatRuntimeConfig{
-			Default: string(OtelRuntimeManager),
 			// go-ucfg sets this while unpacking, having it in the default makes testing easier
 			InputType: make(map[string]string),
 		},
@@ -1173,6 +1172,33 @@ func getLogLevel(val map[string]interface{}, ll logp.Level) (client.UnitLogLevel
 		delete(val, logLevelKey)
 	}
 	return logLevel, nil
+}
+
+// MinLogLevel returns the most verbose log level across agentLevel and all units in comps.
+func MinLogLevel(agentLevel logp.Level, comps []Component) logp.Level {
+	min := agentLevel
+	for _, comp := range comps {
+		for _, unit := range comp.Units {
+			if ll := unitToLogpLevel(unit.LogLevel); ll < min {
+				min = ll
+			}
+		}
+	}
+	return min
+}
+
+func unitToLogpLevel(l client.UnitLogLevel) logp.Level {
+	switch l {
+	case client.UnitLogLevelError:
+		return logp.ErrorLevel
+	case client.UnitLogLevelWarn:
+		return logp.WarnLevel
+	case client.UnitLogLevelInfo:
+		return logp.InfoLevel
+	case client.UnitLogLevelDebug, client.UnitLogLevelTrace:
+		return logp.DebugLevel
+	}
+	return logp.InfoLevel
 }
 
 func stringToLogLevel(val string) (client.UnitLogLevel, error) {
